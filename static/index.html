@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Golang 채팅</title>
+  <style>
+    /* 기본 스타일 */
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f8f8;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+    .chat-container {
+      max-width: 600px;
+      width: 100%;
+      background: #fff;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      height: 80vh;
+    }
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .message {
+      max-width: 70%;
+      padding: 10px;
+      border-radius: 10px;
+    }
+    .server-message {
+      background: #f0f0f0;
+      align-self: flex-start;
+    }
+    .user-message {
+      background: #0084ff;
+      color: #fff;
+      align-self: flex-end;
+    }
+    .chat-input {
+      display: flex;
+    }
+    .chat-input input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px 0 0 5px;
+      outline: none;
+    }
+    .chat-input button {
+      padding: 10px 20px;
+      border: 1px solid #0084ff;
+      background: #0084ff;
+      color: #fff;
+      border-radius: 0 5px 5px 0;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="messages" id="messages">
+      <!-- 메시지가 표시될 영역 -->
+    </div>
+    <div class="chat-input">
+      <input type="text" id="messageInput" placeholder="메시지를 입력하세요">
+      <button id="sendButton">전송</button>
+    </div>
+  </div>
+
+  <script>
+    let socket;
+
+    // WebSocket 초기화 함수
+    function initWebSocket() {
+      // 서버 주소에 맞게 수정 (예: ws://localhost:8080/ws)
+      socket = new WebSocket('ws://localhost:8080/ws');
+
+      socket.onopen = function() {
+        console.log('WebSocket 연결 성공');
+      };
+
+      socket.onmessage = function(event) {
+        // 서버로부터 받은 메시지 표시
+        const messages = document.getElementById('messages');
+        const messageElem = document.createElement('div');
+        messageElem.classList.add('message', 'server-message');
+        messageElem.innerHTML = `<p>${event.data}</p>`;
+        messages.appendChild(messageElem);
+        messages.scrollTop = messages.scrollHeight;
+      };
+
+      socket.onerror = function(error) {
+        console.error('WebSocket 오류:', error);
+      };
+
+      socket.onclose = function() {
+        console.log('WebSocket 연결 종료');
+      };
+    }
+
+    // 전송 버튼 클릭 이벤트
+    document.getElementById('sendButton').addEventListener('click', function() {
+      const input = document.getElementById('messageInput');
+      const message = input.value;
+      if (message && socket && socket.readyState === WebSocket.OPEN) {
+        // 사용자 메시지 표시
+        const messages = document.getElementById('messages');
+        const messageElem = document.createElement('div');
+        messageElem.classList.add('message', 'user-message');
+        messageElem.innerHTML = `<p>${message}</p>`;
+        messages.appendChild(messageElem);
+        messages.scrollTop = messages.scrollHeight;
+
+        // 서버로 메시지 전송
+        socket.send(message);
+        input.value = '';
+      }
+    });
+
+    // 페이지 로드 시 /login 엔드포인트에 요청하여 세션 설정 후 WebSocket 연결
+    fetch('/login')
+      .then(response => response.text())
+      .then(data => {
+        console.log(data); // "로그인 성공!" 출력
+        initWebSocket();
+      })
+      .catch(error => console.error('로그인 실패:', error));
+  </script>
+</body>
+</html>
